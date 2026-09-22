@@ -119,6 +119,25 @@
                 cursor: pointer;
                 z-index: 20;
             }
+
+            /* Flying moth */
+            #moth {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 70px;
+                height: auto;
+                cursor: pointer;
+                z-index: -1;
+                pointer-events: auto;
+                filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+                /* transform is set dynamically in JS (position + rotation + flip) */
+                transition: filter 0.15s ease;
+            }
+
+            #moth:hover {
+                filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5)) brightness(1.1);
+            }
         </style>
     </head>
     <body>
@@ -133,9 +152,8 @@
         <div class="overlay" id="menuOverlay">
             <div class="menu-panel">
                 <h2>Choose an option</h2>
-                <button class="menu-button" onclick="alert('Not Added Yet!')">Tutorial (WIP)</button>
-                <button class="menu-button" onclick="window.open('https://threethan.itch.io/lightning-launcher', '_blank')">Lightning Launcher</button>
-                <button class="menu-button" onclick="alert('Not Added Yet!')">Soundboard (WIP)</button>
+                <button class="menu-button" onclick="window.open('https://drive.google.com/file/d/1hVvKdBO3ayz3qoeOad6cfNgFvNAo5hS9/view?usp=drivesdk', '_blank')">Soundboard</button>
+                <button class="menu-button" onclick="window.open('https://threethan.itch.io/lightning-launcher', '_blank')">Tutorial</button>
                 <button class="close-button" onclick="document.getElementById('menuOverlay').classList.remove('active')">Close</button>
             </div>
         </div>
@@ -143,6 +161,18 @@
         <!-- Background music -->
         <audio id="bgMusic" src="BackgroundMusic.mp3" loop></audio>
         <button class="mute-button" id="muteButton" onclick="toggleMute()">🔊</button>
+
+        <!-- Flying moth -->
+        <img id="moth" src="Izzy.gif" alt="Izzy the moth" title="Click me!">
+
+        <!-- Moth sound clips -->
+        <audio id="izzySound1" src="Izzy_1.mp3" preload="auto"></audio>
+        <audio id="izzySound2" src="Izzy_2.mp3" preload="auto"></audio>
+        <audio id="izzySound3" src="Izzy_3.mp3" preload="auto"></audio>
+        <audio id="izzySound4" src="Izzy_4.mp3" preload="auto"></audio>
+        <audio id="izzySound5" src="Izzy_5.mp3" preload="auto"></audio>
+        <audio id="izzySound6" src="Izzy_6.mp3" preload="auto"></audio>
+        <audio id="izzySound7" src="Izzy_7.mp3" preload="auto"></audio>
 
         <script>
             const bgMusic = document.getElementById('bgMusic');
@@ -164,6 +194,82 @@
                 bgMusic.muted = !bgMusic.muted;
                 muteButton.textContent = bgMusic.muted ? '🔇' : '🔊';
             }
+
+            // ---- Flying moth ----
+            const moth = document.getElementById('moth');
+            const mothSounds = [
+                document.getElementById('izzySound1'),
+                document.getElementById('izzySound2'),
+                document.getElementById('izzySound3'),
+                document.getElementById('izzySound4'),
+                document.getElementById('izzySound5'),
+                document.getElementById('izzySound6'),
+                document.getElementById('izzySound7'),
+            ];
+
+            let mothX = window.innerWidth / 2;
+            let mothY = window.innerHeight / 2;
+            let targetX = mothX;
+            let targetY = mothY;
+            let mothAngle = 0; // current facing angle in degrees
+            let mothSpeed = 1.2 + Math.random(); // px per frame, varies a bit
+            let flipX = 1; // used so the moth doesn't render upside-down when facing left
+
+            function pickNewTarget() {
+                const margin = 60;
+                targetX = margin + Math.random() * (window.innerWidth - margin * 2);
+                targetY = margin + Math.random() * (window.innerHeight - margin * 2);
+                mothSpeed = 0.8 + Math.random() * 1.6;
+            }
+            pickNewTarget();
+            setInterval(pickNewTarget, 2500 + Math.random() * 2000);
+
+            function animateMoth() {
+                const dx = targetX - mothX;
+                const dy = targetY - mothY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > 4) {
+                    // Move toward target with a little wobble for natural flight
+                    const wobble = Math.sin(Date.now() / 180) * 0.5;
+                    const desiredAngle = Math.atan2(dy, dx) * (180 / Math.PI) + wobble * 15;
+
+                    // Smoothly rotate current angle toward desired angle
+                    let angleDiff = desiredAngle - mothAngle;
+                    angleDiff = ((angleDiff + 180) % 360 + 360) % 360 - 180;
+                    mothAngle += angleDiff * 0.08;
+
+                    const radians = mothAngle * (Math.PI / 180);
+                    mothX += Math.cos(radians) * mothSpeed;
+                    mothY += Math.sin(radians) * mothSpeed + wobble * 0.6;
+
+                    // Flip the image horizontally when flying left so it doesn't look upside down
+                    flipX = (Math.cos(radians) < 0) ? -1 : 1;
+                } else {
+                    pickNewTarget();
+                }
+
+                // Keep within bounds just in case
+                mothX = Math.max(0, Math.min(window.innerWidth - 70, mothX));
+                mothY = Math.max(0, Math.min(window.innerHeight - 70, mothY));
+
+                // When mirrored (flipX = -1), rotation direction must be inverted too
+                const displayAngle = flipX === 1 ? mothAngle : -mothAngle;
+                moth.style.transform =
+                    `translate(${mothX}px, ${mothY}px) scaleX(${flipX}) rotate(${displayAngle}deg)`;
+
+                requestAnimationFrame(animateMoth);
+            }
+            requestAnimationFrame(animateMoth);
+
+            moth.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const sound = mothSounds[Math.floor(Math.random() * mothSounds.length)];
+                sound.currentTime = 0;
+                sound.play().catch(() => {});
+                // little "startled" burst of speed and a fresh direction when clicked
+                pickNewTarget();
+            });
         </script>
     </body>
 </html>
